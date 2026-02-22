@@ -1,6 +1,6 @@
 {
   "name": "Yubik'le Seri Yap",
-  "short_name": "Yubik'le",
+  "short_name": "Yubik'le Seri Yap",
   "description": "Kişisel Gelişim ve Takip Sistemi",
   "start_url": "index.html",
   "display": "standalone",
@@ -19,3 +19,4 @@
     }
   ]
 }
+
