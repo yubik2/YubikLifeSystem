@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Life System OS V7</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#00e5ff">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="LifeOS">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: #050505; --card: #111113; --accent: #00e5ff;
+            --success: #00ff88; --xp: #f1c40f; --text: #fff; --text-dim: #666;
+        }
+
+        body {
+            margin: 0; background: var(--bg); color: var(--text);
+            font-family: 'Inter', sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+        }
+
+        /* --- Header & XP --- */
+        .header { padding: 15px; background: #000; border-bottom: 1px solid #1a1a1a; }
+        .lvl-box { width: 45px; height: 45px; border-radius: 12px; background: linear-gradient(135deg, var(--accent), #5000ff); display: flex; align-items: center; justify-content: center; font-weight: 900; }
+        .xp-bar-container { flex: 1; height: 6px; background: #1a1a1a; border-radius: 10px; margin-top: 8px; overflow: hidden; }
+        .xp-bar-fill { height: 100%; background: var(--xp); width: 0%; transition: 1s ease-out; }
+
+        /* --- Content & Layout --- */
+        .page-container { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 110px; }
+        .page { display: none; animation: slideUp 0.3s ease; }
+        .active { display: block; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- Cards --- */
+        .card { background: var(--card); border-radius: 20px; padding: 16px; margin-bottom: 12px; border: 1px solid #1f1f23; }
+        .stat-badge { font-size: 0.65rem; padding: 4px 8px; border-radius: 6px; background: #1a1a1a; color: var(--accent); border: 1px solid #333; }
+        .kalan-badge { color: var(--success); background: rgba(0,255,136,0.05); }
+
+        /* --- Achievement System --- */
+        .ach-category { margin-bottom: 25px; }
+        .ach-category h4 { color: var(--xp); font-size: 0.8rem; letter-spacing: 1px; margin-bottom: 10px; border-left: 3px solid var(--xp); padding-left: 10px; }
+        .ach-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .ach-card { background: #0c0c0e; border: 1px solid #1a1a1a; padding: 12px 5px; border-radius: 15px; text-align: center; grayscale: 1; opacity: 0.3; transition: 0.5s; }
+        .ach-card.unlocked { grayscale: 0; opacity: 1; border-color: var(--xp); background: rgba(241, 196, 15, 0.05); box-shadow: 0 0 15px rgba(241, 196, 15, 0.1); }
+        .ach-card i { font-size: 1.4rem; color: var(--xp); margin-bottom: 8px; display: block; }
+        .ach-card span { font-size: 0.6rem; display: block; line-height: 1.2; font-weight: bold; }
+
+        /* --- Navigation --- */
+        .nav { position: fixed; bottom: 0; width: 100%; display: flex; background: #000; border-top: 1px solid #1a1a1a; padding-bottom: 20px; }
+        .nav-item { flex: 1; padding: 15px 5px; text-align: center; color: #444; font-size: 0.6rem; }
+        .nav-item i { display: block; font-size: 1.1rem; margin-bottom: 3px; }
+        .nav-item.active { color: var(--accent); }
+
+        /* --- Custom UI Elements --- */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); display: none; align-items: center; justify-content: center; z-index: 9999; padding: 25px; }
+        .modal { background: #111; padding: 25px; border-radius: 25px; width: 100%; border: 1px solid #222; text-align: center; }
+        input { background: #000; border: 1px solid #333; color: #fff; padding: 15px; border-radius: 15px; width: 100%; margin-bottom: 10px; box-sizing: border-box; font-size: 1rem; }
+        .btn { border: none; padding: 15px; border-radius: 15px; font-weight: 800; cursor: pointer; width: 100%; margin-top: 5px; }
+        .btn-blue { background: var(--accent); color: #000; }
+        .btn-ghost { background: transparent; color: var(--text-dim); }
+    </style>
+</head>
+<body>
+
+<div id="modalOverlay" class="modal-overlay">
+    <div id="modal" class="modal">
+        <div id="modalContent"></div>
+    </div>
+</div>
+
+<div class="header">
+    <div style="display:flex; align-items:center; gap:12px">
+        <div class="lvl-box" id="lvlDisp">1</div>
+        <div style="flex:1">
+            <div style="display:flex; justify-content:space-between; align-items:flex-end">
+                <span id="rankDisp" style="font-weight:900; color:var(--accent); font-size:0.75rem">YÜKLENİYOR...</span>
+                <span style="font-size:0.6rem; color:var(--text-dim)">XP: <span id="xpDisp">0</span></span>
+            </div>
+            <div class="xp-bar-container"><div id="xpBar" class="xp-bar-fill"></div></div>
+        </div>
+    </div>
+</div>
+
+<div class="page-container">
+    <div id="dashPage" class="page active">
+        <div class="card" style="background: linear-gradient(45deg, #0c0c0e, #111113); text-align:center">
+            <h4 style="margin:0; font-size:0.8rem; color:var(--xp)">GÜNÜN MOTİVASYONU</h4>
+            <p id="quoteDisp" style="font-size:0.85rem; margin:10px 0 0; font-style:italic">"Büyük şeyler küçük başlangıçlarla olur."</p>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:15px">
+            <div class="card" style="margin:0; text-align:center">
+                <div style="font-size:0.6rem; color:var(--text-dim)">BİRİKİM</div>
+                <div id="totalMoney" style="font-size:1rem; font-weight:bold">0 TL</div>
+            </div>
+            <div class="card" style="margin:0; text-align:center">
+                <div style="font-size:0.6rem; color:var(--text-dim)">ALIŞKANLIK</div>
+                <div id="totalHabit" style="font-size:1rem; font-weight:bold">0</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="savingsPage" class="page">
+        <div class="card">
+            <input id="inSName" placeholder="Hedef Nedir?">
+            <input id="inSGoal" type="number" placeholder="Hedef Tutar (TL)">
+            <input id="inSDays" type="number" placeholder="Hedef Gün (Opsiyonel)">
+            <button class="btn btn-blue" onclick="app.add('savings')">EKLE</button>
+        </div>
+        <div id="savingsList"></div>
+    </div>
+
+    <div id="habitsPage" class="page">
+        <div class="card">
+            <input id="inHName" placeholder="Alışkanlık Adı">
+            <input id="inHGoal" type="number" placeholder="Hedef Gün (Opsiyonel)">
+            <div style="font-size:0.7rem; color:var(--text-dim); margin-bottom:10px">
+                <input type="checkbox" id="inHOnce" style="width:auto"> Sadece günde 1 kez yapılabilsin
+            </div>
+            <button class="btn btn-blue" style="background:var(--success)" onclick="app.add('habits')">EKLE</button>
+        </div>
+        <div id="habitsList"></div>
+    </div>
+
+    <div id="achievementsPage" class="page">
+        <div id="achContent"></div>
+    </div>
+</div>
+
+<nav class="nav">
+    <div class="nav-item active" onclick="app.nav('dash', this)"><i class="fas fa-bolt"></i>Özet</div>
+    <div class="nav-item" onclick="app.nav('savings', this)"><i class="fas fa-piggy-bank"></i>Birikim</div>
+    <div class="nav-item" onclick="app.nav('habits', this)"><i class="fas fa-fist-raised"></i>Alışkanlık</div>
+    <div class="nav-item" onclick="app.nav('achievements', this)"><i class="fas fa-award"></i>Başarılar</div>
+</nav>
+
+<script>
+// SERVICE WORKER KAYDI (UYGULAMA OLMASI İÇİN ŞART)
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(err => console.log('SW hatası:', err));
+    });
+}
+
+const app = {
+    data: JSON.parse(localStorage.getItem('ls_v7')) || {
+        xp: 0, lvl: 1, savings: [], habits: [], achieved: [], totalEarned: 0
+    },
+
+    ranks: ["HAYALPEREST", "YOLCU", "KARARLI", "DİSİPLİNLİ", "SAVAŞÇI", "KIDEMLİ", "ÜSTAT", "KAHRAMAN", "EFSANE", "ÖLÜMSÜZ"],
+
+    achDb: {
+        milestones: [
+            { id: 'lvl5', title: 'Seviye 5', desc: 'Gelişim başlıyor', icon: 'fa-medal', check: d => d.lvl >= 5 },
+            { id: 'lvl10', title: 'Seviye 10', desc: 'Yolun başı', icon: 'fa-award', check: d => d.lvl >= 10 },
+            { id: 'lvl25', title: 'Seviye 25', desc: 'Çeyrek asır', icon: 'fa-crown', check: d => d.lvl >= 25 },
+            { id: 'lvl50', title: 'Seviye 50', desc: 'Yarım dalya', icon: 'fa-gem', check: d => d.lvl >= 50 },
+            { id: 'lvl100', title: 'Seviye 100', desc: 'Asırlık çınar', icon: 'fa-fire', check: d => d.lvl >= 100 }
+        ],
+        special: [
+            { id: 'first_goal', title: 'İlk Adım', desc: 'İlk hedefini ekledin', icon: 'fa-star', check: d => (d.savings.length + d.habits.length) >= 1 },
+            { id: 'rich', title: 'Zengin', desc: '5.000 TL biriktirdin', icon: 'fa-coins', check: d => d.totalEarned >= 5000 },
+            { id: 'saver', title: 'Kumbara', desc: '3 farklı birikim hedefi', icon: 'fa-wallet', check: d => d.savings.length >= 3 },
+            { id: 'consistent', title: 'İstikrarlı', desc: 'Bir alışkanlıkta 10 gün', icon: 'fa-calendar-check', check: d => d.habits.some(h => h.current >= 10) }
+        ]
+    },
+
+    init() {
+        this.render();
+        setInterval(() => this.checkAch(), 3000);
+    },
+
+    nav(p, el) {
+        document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
+        document.getElementById(p + 'Page').classList.add('active');
+        el.classList.add('active');
+        this.render();
+    },
+
+    showModal(html) {
+        document.getElementById('modalContent').innerHTML = html;
+        document.getElementById('modalOverlay').style.display = 'flex';
+    },
+
+    close() { document.getElementById('modalOverlay').style.display = 'none'; },
+
+    add(type) {
+        const name = type === 'savings' ? inSName.value : inHName.value;
+        const goal = type === 'savings' ? parseFloat(inSGoal.value) : (parseInt(inHGoal.value) || 0);
+        const days = type === 'savings' ? parseInt(inSDays.value) : null;
+        if (!name) return;
+
+        this.data[type].push({
+            id: Date.now(), name, goal, current: 0,
+            targetDays: days, createdAt: Date.now(),
+            completed: false, once: type === 'habits' ? inHOnce.checked : false, lastDone: null
+        });
+        
+        this.addXp(50);
+        inSName.value = ''; inSGoal.value = ''; inSDays.value = '';
+        inHName.value = ''; inHGoal.value = '';
+        this.save();
+    },
+
+    update(type, idx) {
+        const item = this.data[type][idx];
+        if (type === 'savings') {
+            this.showModal(`
+                <h3>Miktar Gir</h3>
+                <input type="number" id="mIn" placeholder="TL">
+                <button class="btn btn-blue" onclick="app.confirmUpdate('savings', ${idx})">EKLE</button>
+                <button class="btn btn-ghost" onclick="app.close()">VAZGEÇ</button>
+            `);
+        } else {
+            const today = new Date().toDateString();
+            if (item.once && item.lastDone === today) return;
+            this.confirmUpdate('habits', idx, 1);
+        }
+    },
+
+    confirmUpdate(type, idx, val = null) {
+        const item = this.data[type][idx];
+        const v = val || parseFloat(document.getElementById('mIn').value);
+        if (isNaN(v) || v <= 0) return;
+
+        item.current += v;
+        if (type === 'savings') this.data.totalEarned += v;
+        if (type === 'habits') item.lastDone = new Date().toDateString();
+
+        if (item.goal > 0 && item.current >= item.goal) {
+            item.current = item.goal; item.completed = true;
+            this.addXp(500);
+            this.showModal(`<h3>TEBRİKLER!</h3><p>${item.name} bitti.</p><button class="btn btn-blue" onclick="app.close()">TAMAM</button>`);
+        } else {
+            this.addXp(20);
+            this.close();
+        }
+        this.save();
+    },
+
+    addXp(v) {
+        this.data.xp += v;
+        const req = this.data.lvl * 1000;
+        if (this.data.xp >= req) {
+            this.data.lvl++; this.data.xp -= req;
+            this.showModal(`<h2>LEVEL UP!</h2><p>Yeni Seviye: ${this.data.lvl}</p><button class="btn btn-blue" onclick="app.close()">SÜPER</button>`);
+        }
+        this.save();
+    },
+
+    save() {
+        localStorage.setItem('ls_v7', JSON.stringify(this.data));
+        this.render();
+    },
+
+    checkAch() {
+        let won = false;
+        [...this.achDb.milestones, ...this.achDb.special].forEach(a => {
+            if (!this.data.achieved.includes(a.id) && a.check(this.data)) {
+                this.data.achieved.push(a.id);
+                this.addXp(300);
+                won = true;
+            }
+        });
+        if (won) this.save();
+    },
+
+    getAI(item) {
+        if (!item.goal) return "Süresiz";
+        const rem = item.goal - item.current;
+        if (rem <= 0) return "Tamamlandı";
+        
+        const passed = Math.max(0.5, (Date.now() - item.createdAt) / 86400000);
+        const speed = item.current / passed;
+
+        if (item.targetDays) {
+            const req = rem / item.targetDays;
+            return `Günlük ${req.toFixed(0)} TL gerekli`;
+        }
+        if (speed <= 0) return "Henüz veri yok";
+        return `${Math.ceil(rem/speed)} gün kaldı`;
+    },
+
+    render() {
+        // Stats
+        lvlDisp.innerText = this.data.lvl;
+        xpDisp.innerText = this.data.xp;
+        rankDisp.innerText = this.ranks[Math.min(Math.floor(this.data.lvl/5), 9)];
+        xpBar.style.width = (this.data.xp / (this.data.lvl * 1000) * 100) + '%';
+        totalMoney.innerText = this.data.savings.reduce((a,b)=>a+b.current,0).toLocaleString() + " TL";
+        totalHabit.innerText = this.data.habits.reduce((a,b)=>a+b.current,0);
+
+        // Lists
+        this.renderList('savings', savingsList);
+        this.renderList('habits', habitsList);
+
+        // Achievement Page
+        if (document.getElementById('achievementsPage').classList.contains('active')) {
+            let html = '<h3 style="text-align:center">BAŞARIMLAR</h3>';
+            
+            const renderGroup = (title, items) => {
+                let g = `<div class="ach-category"><h4>${title}</h4><div class="ach-grid">`;
+                items.forEach(a => {
+                    const isOk = this.data.achieved.includes(a.id);
+                    g += `<div class="ach-card ${isOk?'unlocked':''}">
+                        <i class="fas ${a.icon}"></i>
+                        <span>${a.title}</span>
+                        <span style="font-size:0.4rem; color:var(--text-dim); margin-top:3px">${a.desc}</span>
+                    </div>`;
+                });
+                return g + '</div></div>';
+            }
+
+            html += renderGroup('KİLOMETRE TAŞLARI', this.achDb.milestones);
+            html += renderGroup('ÖZEL GÖREVLER', this.achDb.special);
+            achContent.innerHTML = html;
+        }
+    },
+
+    renderList(type, container) {
+        container.innerHTML = '';
+        this.data[type].forEach((item, i) => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <div style="display:flex; justify-content:space-between">
+                    <strong style="font-size:0.9rem">${item.name}</strong>
+                    <button onclick="app.del('${type}', ${i})" style="background:none; border:none; color:#333"><i class="fas fa-trash"></i></button>
+                </div>
+                <div style="display:flex; align-items:center; gap:12px; margin-top:10px">
+                    <div style="flex:1">
+                        <div style="font-size:1.1rem; font-weight:800">${item.current} <small style="font-size:0.6rem; color:var(--text-dim)">/ ${item.goal||'∞'}</small></div>
+                        <div style="margin-top:5px">
+                            <span class="stat-badge kalan-badge">${item.goal ? 'Kalan: '+(item.goal-item.current) : 'Sınırsız'}</span>
+                            <span class="stat-badge" style="background:rgba(0,229,255,0.05)"><i class="fas fa-brain"></i> ${this.getAI(item)}</span>
+                        </div>
+                        ${!item.completed ? `<button class="btn btn-blue" style="font-size:0.7rem; padding:10px; margin-top:10px" onclick="app.update('${type}', ${i})">${type==='savings'?'PARA EKLE':'+1 İLERLE'}</button>` : '<div class="stat-badge" style="margin-top:10px; display:block; text-align:center; background:var(--success); color:#000">BİTTİ</div>'}
+                    </div>
+                    <div style="width:65px; height:65px"><canvas id="c-${item.id}"></canvas></div>
+                </div>
+            `;
+            container.appendChild(card);
+            new Chart(document.getElementById(`c-${item.id}`), {
+                type: 'doughnut',
+                data: { datasets: [{ data: [item.current, item.goal?Math.max(0,item.goal-item.current):1], backgroundColor:[type==='savings'?'#00e5ff':'#00ff88','#1a1a1a'], borderWidth:0 }] },
+                options: { cutout:'85%', plugins:{legend:{display:false}} }
+            });
+        });
+    },
+
+    del(type, idx) {
+        this.showModal(`<h3>SİLİNSİN Mİ?</h3><button class="btn btn-blue" style="background:#ff4d4d" onclick="app.confDel('${type}', ${idx})">SİL</button><button class="btn btn-ghost" onclick="app.close()">İPTAL</button>`);
+    },
+    confDel(type, idx) { this.data[type].splice(idx,1); this.close(); this.save(); }
+};
+
+app.init();
+</script>
+</body>
+</html>
