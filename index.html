@@ -148,18 +148,21 @@
 </nav>
 
 <script>
+// SERVICE WORKER & BİLDİRİM İZNİ
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').catch(err => console.log('SW hatası:', err));
+        navigator.serviceWorker.register('sw.js').then(reg => {
+            console.log('SW Kayıtlı');
+        }).catch(err => console.log('SW hatası:', err));
     });
 }
 
 const app = {
     defaultData: {
-        xp: 0, lvl: 1, savings: [], habits: [], achieved: [], totalEarned: 0
+        xp: 0, lvl: 1, savings: [], habits: [], achieved: [], totalEarned: 0, last_activity: Date.now()
     },
     data: JSON.parse(localStorage.getItem('ls_v7')) || {
-        xp: 0, lvl: 1, savings: [], habits: [], achieved: [], totalEarned: 0
+        xp: 0, lvl: 1, savings: [], habits: [], achieved: [], totalEarned: 0, last_activity: Date.now()
     },
 
     ranks: ["HAYALPEREST", "YOLCU", "KARARLI", "DİSİPLİNLİ", "SAVAŞÇI", "KIDEMLİ", "ÜSTAT", "KAHRAMAN", "EFSANE", "ÖLÜMSÜZ"],
@@ -182,6 +185,7 @@ const app = {
 
     init() {
         this.render();
+        yubikAI.init(); // Yubik Bildirimlerini Başlat
         setInterval(() => this.checkAch(), 3000);
     },
 
@@ -265,6 +269,7 @@ const app = {
     },
 
     save() {
+        this.data.last_activity = Date.now(); // Hareket zamanını güncelle
         localStorage.setItem('ls_v7', JSON.stringify(this.data));
         this.render();
     },
@@ -383,6 +388,51 @@ const app = {
         this.showModal(`<h3>SİLİNSİN Mİ?</h3><button class="btn btn-blue" style="background:#ff4d4d" onclick="app.confDel('${type}', ${idx})">SİL</button><button class="btn btn-ghost" onclick="app.close()">İPTAL</button>`);
     },
     confDel(type, idx) { this.data[type].splice(idx,1); this.close(); this.save(); }
+};
+
+// --- YUBİK AI BİLDİRİM SİSTEMİ ---
+const yubikAI = {
+    messages: {
+        morning: ["Günaydın! Yubik bugün senin için çok heyecanlı. Hedeflerine odaklan!", "Yeni bir gün, yeni XP'ler!"],
+        evening: ["Yubik rapor bekliyor. Bugün ne yaptın?", "Günü bitirmeden son bir kontrol mü?"],
+        angry: ["YUBİK SANA ÇOK SİNİRLİ!", "2 gündür yoksun, seri bozuldu bozulacak!", "Beni hayal kırıklığına uğratıyorsun..."]
+    },
+
+    async init() {
+        if (!("Notification" in window)) return;
+        const permission = await Notification.requestPermission();
+        if (permission === "granted") this.startSchedule();
+    },
+
+    send(title, body) {
+        navigator.serviceWorker.ready.then(reg => {
+            reg.showNotification(title, { 
+                body, 
+                icon: 'icon-192.png', 
+                badge: 'icon-192.png',
+                vibrate: [300, 100, 300], 
+                tag: 'yubik-alert' 
+            });
+        });
+    },
+
+    startSchedule() {
+        setInterval(() => {
+            const now = new Date();
+            const h = now.getHours();
+            const m = now.getMinutes();
+            const lastActive = app.data.last_activity || Date.now();
+            const diffDays = (Date.now() - lastActive) / (1000 * 60 * 60 * 24);
+
+            if (diffDays >= 2) {
+                this.send("YUBİK AFFETMEZ!", this.messages.angry[Math.floor(Math.random()*this.messages.angry.length)]);
+            } else if (h === 9 && m === 0) {
+                this.send("Günaydın!", this.messages.morning[0]);
+            } else if (h === 21 && m === 0) {
+                this.send("Rapor Vakti", this.messages.evening[0]);
+            }
+        }, 60000); // Her dakika kontrol et
+    }
 };
 
 app.init();
