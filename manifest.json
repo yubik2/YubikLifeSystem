@@ -2,7 +2,7 @@
   "name": "Yubik'le Seri Yap",
   "short_name": "Yubik'le Seri Yap",
   "description": "Kişisel Gelişim ve Takip Sistemi",
-  "start_url": "index.html",
+  "start_url": "Yubik.html",
   "display": "standalone",
   "background_color": "#050505",
   "theme_color": "#00e5ff",
@@ -19,4 +19,5 @@
     }
   ]
 }
+
 
