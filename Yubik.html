@@ -3,14 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Life System OS V7</title>
+    <title>Yubik'le Seri Yap</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#00e5ff">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="LifeOS">
+    <meta name="apple-mobile-web-app-title" content="Yubik'le">
     <link rel="apple-touch-icon" href="icon-192.png">
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -63,6 +64,7 @@
         .btn { border: none; padding: 15px; border-radius: 15px; font-weight: 800; cursor: pointer; width: 100%; margin-top: 5px; }
         .btn-blue { background: var(--accent); color: #000; }
         .btn-ghost { background: transparent; color: var(--text-dim); }
+        .btn-danger { background: #ff4d4d; color: white; }
     </style>
 </head>
 <body>
@@ -103,6 +105,12 @@
                 <div id="totalHabit" style="font-size:1rem; font-weight:bold">0</div>
             </div>
         </div>
+        
+        <div style="text-align: center; margin-top: 30px;">
+            <button onclick="app.resetDataPrompt()" style="background:none; border:none; color:#333; font-size:0.65rem; text-decoration:underline; cursor:pointer;">
+                Tüm ilerlemeyi sıfırla
+            </button>
+        </div>
     </div>
 
     <div id="savingsPage" class="page">
@@ -140,7 +148,6 @@
 </nav>
 
 <script>
-// SERVICE WORKER KAYDI (UYGULAMA OLMASI İÇİN ŞART)
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js').catch(err => console.log('SW hatası:', err));
@@ -148,6 +155,9 @@ if ('serviceWorker' in navigator) {
 }
 
 const app = {
+    defaultData: {
+        xp: 0, lvl: 1, savings: [], habits: [], achieved: [], totalEarned: 0
+    },
     data: JSON.parse(localStorage.getItem('ls_v7')) || {
         xp: 0, lvl: 1, savings: [], habits: [], achieved: [], totalEarned: 0
     },
@@ -259,6 +269,23 @@ const app = {
         this.render();
     },
 
+    resetDataPrompt() {
+        this.showModal(`
+            <h3>DİKKAT!</h3>
+            <p>Tüm ilerlemen, XP'lerin ve hedeflerin silinecek. Bu işlem geri alınamaz.</p>
+            <p>Emin misin?</p>
+            <button class="btn btn-danger" onclick="app.confirmReset()">EVET, SIFIRLA</button>
+            <button class="btn btn-ghost" onclick="app.close()">HAYIR, VAZGEÇ</button>
+        `);
+    },
+
+    confirmReset() {
+        this.data = JSON.parse(JSON.stringify(this.defaultData));
+        this.save();
+        this.close();
+        location.reload(); 
+    },
+
     checkAch() {
         let won = false;
         [...this.achDb.milestones, ...this.achDb.special].forEach(a => {
@@ -288,19 +315,16 @@ const app = {
     },
 
     render() {
-        // Stats
         lvlDisp.innerText = this.data.lvl;
         xpDisp.innerText = this.data.xp;
         rankDisp.innerText = this.ranks[Math.min(Math.floor(this.data.lvl/5), 9)];
         xpBar.style.width = (this.data.xp / (this.data.lvl * 1000) * 100) + '%';
-        totalMoney.innerText = this.data.savings.reduce((a,b)=>a+b.current,0).toLocaleString() + " TL";
-        totalHabit.innerText = this.data.habits.reduce((a,b)=>a+b.current,0);
+        totalMoney.innerText = (this.data.savings ? this.data.savings.reduce((a,b)=>a+b.current,0) : 0).toLocaleString() + " TL";
+        totalHabit.innerText = this.data.habits ? this.data.habits.reduce((a,b)=>a+b.current,0) : 0;
 
-        // Lists
         this.renderList('savings', savingsList);
         this.renderList('habits', habitsList);
 
-        // Achievement Page
         if (document.getElementById('achievementsPage').classList.contains('active')) {
             let html = '<h3 style="text-align:center">BAŞARIMLAR</h3>';
             
@@ -325,6 +349,7 @@ const app = {
 
     renderList(type, container) {
         container.innerHTML = '';
+        if(!this.data[type]) return;
         this.data[type].forEach((item, i) => {
             const card = document.createElement('div');
             card.className = 'card';
