@@ -1,7 +1,8 @@
 {
-  "name": "Life System OS V7",
-  "short_name": "LifeOS",
-  "start_url": "Yubik.html",
+  "name": "Yubik'le Seri Yap",
+  "short_name": "Yubik'le",
+  "description": "Kişisel Gelişim ve Takip Sistemi",
+  "start_url": "index.html",
   "display": "standalone",
   "background_color": "#050505",
   "theme_color": "#00e5ff",
